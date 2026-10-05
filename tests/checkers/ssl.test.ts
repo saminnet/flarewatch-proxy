@@ -94,7 +94,10 @@ describe('SSL expiry', () => {
     await checkSSLCertificate(`https://localhost:${port}`, { timeout: 5000 });
     await sleep(300);
 
-    expect(openSockets() - before).toBe(serverSockets.size);
+    const serverSide = await new Promise((resolve) =>
+      server.getConnections((_error, count) => resolve(count)),
+    );
+    expect(openSockets() - before).toBe(serverSide);
   });
 
   it('passes a valid certificate and reports it', async () => {
