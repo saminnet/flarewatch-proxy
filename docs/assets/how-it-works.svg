@@ -1,0 +1,95 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="560" viewBox="0 0 1200 560" role="img" aria-labelledby="title desc">
+  <title id="title">How flarewatch-proxy works</title>
+  <desc id="desc">The FlareWatch monitor Worker runs at Cloudflare. It sends a check to the proxy on every run when the monitor sets checkProxy, or after a failed check when it sets confirmVia. The request goes to a public URL or a tunnel, which forwards it to flarewatch-proxy inside your network. The proxy checks your private services over HTTP or TCP, and can read their SSL certificates. It returns the result and its location, and the Worker saves both in its Durable Object. A private address such as 192.168.1.10 does not work as the proxy URL, because the Worker cannot reach your network.</desc>
+  <defs>
+    <marker id="arrow" viewBox="0 0 10 10" refX="8.5" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse">
+      <path class="arrow-head" d="M1 1.5 L8.5 5 L1 8.5"/>
+    </marker>
+    <style>
+      svg {
+        --bg: #ffffff; --area: #f6f7f8; --panel: #ffffff; --border: #d8dee4; --rule: #eaeef2;
+        --text: #1f2328; --muted: #59636e; --accent: #e8710a;
+      }
+      @media (prefers-color-scheme: dark) {
+        svg {
+          --bg: #0d1117; --area: #151b23; --panel: #0d1117; --border: #3d444d; --rule: #262c36;
+          --text: #f0f6fc; --muted: #9198a1; --accent: #f0883e;
+        }
+      }
+      text { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Noto Sans", Helvetica, Arial, sans-serif; fill: var(--text); }
+      .bg { fill: var(--bg); stroke: var(--rule); }
+      .area { fill: var(--area); stroke: var(--border); stroke-dasharray: 6 5; }
+      .panel { fill: var(--panel); stroke: var(--border); }
+      .eyebrow { font-size: 13px; font-weight: 600; letter-spacing: 1.4px; fill: var(--muted); }
+      .h { font-size: 18px; font-weight: 600; }
+      .body { font-size: 15px; fill: var(--muted); }
+      .small { font-size: 14px; fill: var(--muted); }
+      .mono { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size: 13.5px; fill: var(--muted); }
+      .label { font-size: 14px; font-weight: 500; fill: var(--muted); }
+      .flow { fill: none; stroke: var(--muted); stroke-width: 1.5; marker-end: url(#arrow); }
+      .arrow-head { fill: none; stroke: var(--muted); stroke-width: 1.5; stroke-linecap: round; stroke-linejoin: round; }
+      .accent { fill: var(--accent); }
+    </style>
+  </defs>
+
+  <rect class="bg" x="0.5" y="0.5" width="1199" height="559" rx="16"/>
+  <rect class="accent" x="40" y="42" width="10" height="10" rx="2"/>
+  <text class="eyebrow" x="60" y="52">HOW FLAREWATCH-PROXY WORKS</text>
+
+  <!-- Cloudflare -->
+  <rect class="area" x="40" y="84" width="320" height="400" rx="14"/>
+  <text class="eyebrow" x="64" y="116">CLOUDFLARE</text>
+
+  <rect class="panel" x="64" y="140" width="272" height="130" rx="10"/>
+  <text class="h" x="88" y="178">Monitor Worker</text>
+  <text class="body" x="88" y="206">Checks every minute</text>
+  <text class="mono" x="88" y="240">checkProxy · confirmVia</text>
+
+  <path class="flow" d="M200 270 V322"/>
+  <text class="label" x="212" y="301">saves</text>
+  <rect class="panel" x="64" y="326" width="272" height="130" rx="10"/>
+  <text class="h" x="88" y="364">Durable Object</text>
+  <text class="body" x="88" y="392">The result and its location</text>
+  <text class="small" x="88" y="426">Shown on the status page</text>
+
+  <!-- Public URL or tunnel -->
+  <path class="flow" d="M336 190 H436"/>
+  <text class="label" x="400" y="180" text-anchor="middle">sends</text>
+  <path class="flow" d="M440 240 H340"/>
+  <text class="label" x="400" y="262" text-anchor="middle">returns</text>
+
+  <rect class="panel" x="440" y="140" width="300" height="130" rx="10"/>
+  <text class="h" x="464" y="178">Public URL or tunnel</text>
+  <text class="body" x="464" y="206">Caddy, nginx or Cloudflare Tunnel</text>
+  <text class="mono" x="464" y="240">proxy.example.com/check</text>
+
+  <rect class="panel" x="440" y="326" width="300" height="130" rx="10"/>
+  <text class="eyebrow" x="464" y="358">WHEN IT SENDS ONE</text>
+  <text class="mono" x="464" y="394">checkProxy</text>
+  <text class="small" x="716" y="394" text-anchor="end">every check</text>
+  <text class="mono" x="464" y="428">confirmVia</text>
+  <text class="small" x="716" y="428" text-anchor="end">after a failed check</text>
+
+  <!-- Your network -->
+  <path class="flow" d="M740 190 H840"/>
+  <text class="label" x="780" y="180" text-anchor="middle">forwards</text>
+  <path class="flow" d="M844 240 H744"/>
+  <text class="label" x="780" y="262" text-anchor="middle">returns</text>
+
+  <rect class="area" x="820" y="84" width="340" height="400" rx="14"/>
+  <text class="eyebrow" x="844" y="116">YOUR NETWORK</text>
+
+  <rect class="panel" x="844" y="140" width="292" height="130" rx="10"/>
+  <text class="h" x="868" y="178">flarewatch-proxy</text>
+  <text class="body" x="868" y="206">Node or Docker, port 3000</text>
+  <text class="mono" x="868" y="240">POST /check</text>
+
+  <path class="flow" d="M990 270 V322"/>
+  <text class="label" x="1002" y="301">checks</text>
+  <rect class="panel" x="844" y="326" width="292" height="130" rx="10"/>
+  <text class="h" x="868" y="364">Private services</text>
+  <text class="body" x="868" y="392">NAS, databases, internal APIs</text>
+  <text class="small" x="868" y="426">HTTP · TCP · SSL expiry</text>
+
+  <text class="small" x="40" y="524">The Worker runs at Cloudflare, so it can't reach 192.168.x.x. Give the proxy a public URL or a tunnel.</text>
+</svg>

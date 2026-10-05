@@ -1,26 +1,23 @@
+import { isIP } from 'node:net';
 import type { SSLCertificateInfo } from '../types';
 import { DEFAULT_HTTP_TIMEOUT, withTimeout } from '../utils';
 
 export interface SSLCheckOptions {
-  /** Days before expiry to warn */
-  daysBeforeExpiry?: number;
-  /** Ignore self-signed certificates (default: false) */
   ignoreSelfSigned?: boolean;
-  /** Connection timeout in ms */
   timeout?: number;
 }
 
-/**
- * Check SSL certificate for a given URL
- * Returns certificate information including expiry date
- */
+/** Node returns an array when a certificate repeats an attribute. */
+function certField(value: string | string[] | undefined): string | undefined {
+  return Array.isArray(value) ? value.join(', ') : value;
+}
+
 export async function checkSSLCertificate(
   url: string,
   options: SSLCheckOptions = {},
 ): Promise<SSLCertificateInfo> {
   const { ignoreSelfSigned = false, timeout = DEFAULT_HTTP_TIMEOUT } = options;
 
-  // Dynamic import for Node.js TLS module
   const tls = await import('node:tls').catch(() => null);
 
   if (!tls) {
@@ -28,7 +25,7 @@ export async function checkSSLCertificate(
   }
 
   const parsedUrl = new URL(url);
-  const hostname = parsedUrl.hostname;
+  const hostname = parsedUrl.hostname.replace(/^\[|\]$/g, '');
   const port = parsedUrl.port ? Number(parsedUrl.port) : 443;
 
   const checkPromise = new Promise<SSLCertificateInfo>((resolve, reject) => {
@@ -36,7 +33,7 @@ export async function checkSSLCertificate(
       {
         host: hostname,
         port,
-        servername: hostname,
+        ...(isIP(hostname) ? {} : { servername: hostname }),
         rejectUnauthorized: !ignoreSelfSigned,
       },
       () => {
@@ -44,13 +41,13 @@ export async function checkSSLCertificate(
           const cert = socket.getPeerCertificate();
 
           if (!cert || Object.keys(cert).length === 0) {
-            socket.end();
+            socket.destroy();
             reject(new Error('No certificate received'));
             return;
           }
 
           if (!cert.valid_to) {
-            socket.end();
+            socket.destroy();
             reject(new Error('Certificate missing valid_to field'));
             return;
           }
@@ -59,16 +56,16 @@ export async function checkSSLCertificate(
           const now = Date.now();
           const daysUntilExpiry = Math.floor((expiryDate - now) / (1000 * 60 * 60 * 24));
 
-          socket.end();
+          socket.destroy();
 
           resolve({
-            expiryDate: Math.floor(expiryDate / 1000), // Convert to Unix timestamp (seconds)
+            expiryDate: Math.floor(expiryDate / 1000),
             daysUntilExpiry,
-            issuer: cert.issuer?.O ?? cert.issuer?.CN,
-            subject: cert.subject?.CN,
+            issuer: certField(cert.issuer?.O ?? cert.issuer?.CN),
+            subject: certField(cert.subject?.CN),
           });
         } catch (err) {
-          socket.end();
+          socket.destroy();
           reject(err);
         }
       },

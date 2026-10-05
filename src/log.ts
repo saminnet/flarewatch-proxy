@@ -1,18 +1,12 @@
+import type { JsonObject } from './types';
+
 const isProd = process.env.NODE_ENV === 'production';
 
 type LogLevel = 'debug' | 'info' | 'warn' | 'error';
 
-interface LogEntry {
-  level: LogLevel;
-  message: string;
-  source: string;
-  timestamp: string;
-  [key: string]: unknown;
-}
-
 export function createLogger(source: string) {
-  const log = (level: LogLevel, message: string, data?: Record<string, unknown>) => {
-    const entry: LogEntry = {
+  const log = (level: LogLevel, message: string, data?: JsonObject) => {
+    const entry = {
       level,
       message,
       source,
@@ -31,9 +25,9 @@ export function createLogger(source: string) {
   };
 
   return {
-    debug: (message: string, data?: Record<string, unknown>) => log('debug', message, data),
-    error: (message: string, data?: Record<string, unknown>) => log('error', message, data),
-    info: (message: string, data?: Record<string, unknown>) => log('info', message, data),
-    warn: (message: string, data?: Record<string, unknown>) => log('warn', message, data),
+    debug: (message: string, data?: JsonObject) => log('debug', message, data),
+    error: (message: string, data?: JsonObject) => log('error', message, data),
+    info: (message: string, data?: JsonObject) => log('info', message, data),
+    warn: (message: string, data?: JsonObject) => log('warn', message, data),
   };
 }

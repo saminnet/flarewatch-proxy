@@ -1,21 +1,20 @@
 import { serve } from '@hono/node-server';
 import { createProxy } from './app';
 import { createLogger } from './log';
-
-const DEFAULT_PORT = 3000;
+import { readSettings } from './settings';
 
 const log = createLogger('Proxy');
 
-const port = Number(process.env['PORT']) || DEFAULT_PORT;
-const authToken = process.env['FLAREWATCH_PROXY_TOKEN'];
-const location = process.env['FLAREWATCH_PROXY_LOCATION'];
+const settings = readSettings(process.env);
 
-if (!authToken) {
-  log.error('FLAREWATCH_PROXY_TOKEN is required');
+if ('error' in settings) {
+  log.error(settings.error);
   process.exit(1);
 }
 
-const app = createProxy({ authToken, location });
+const { authToken, location, port, previousAuthToken } = settings;
+
+const app = createProxy({ authToken, location, previousAuthToken });
 
 log.info('Starting', {
   location: location ?? 'auto-detect',

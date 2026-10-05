@@ -6,10 +6,6 @@ import { checkTcp } from './tcp';
 
 const log = createLogger('Checker');
 
-/**
- * Check a monitor target
- * Dispatches to appropriate checker based on method
- */
 export async function checkMonitor(target: MonitorTarget): Promise<CheckResult> {
   try {
     switch (target.method) {
@@ -26,7 +22,6 @@ export async function checkMonitor(target: MonitorTarget): Promise<CheckResult> 
         return await checkHttp(target);
 
       default:
-        // Default to HTTP for unknown methods
         log.info('Unknown method, defaulting to HTTP', { method: target.method });
         return await checkHttp(target);
     }

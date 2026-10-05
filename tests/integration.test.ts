@@ -1,8 +1,8 @@
-import { describe, it, expect, beforeAll, afterAll, vi } from 'vitest';
+import { describe, it, expect, beforeAll, afterAll, vi } from 'vite-plus/test';
 import { createProxy } from '../src/app';
 import type { CheckResultWithLocation } from '../src/types';
 
-const fetchMock = vi.fn();
+const fetchMock = vi.fn<typeof fetch>();
 
 beforeAll(() => {
   fetchMock.mockImplementation((input: RequestInfo | URL) => {
