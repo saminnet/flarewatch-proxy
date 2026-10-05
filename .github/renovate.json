@@ -3,12 +3,9 @@
   "extends": ["config:recommended", "helpers:pinGitHubActionDigests", ":configMigration"],
   "schedule": ["before 6am on monday"],
   "minimumReleaseAge": "3 days",
+  "postUpdateOptions": ["gomodTidy"],
   "prConcurrentLimit": 3,
   "prHourlyLimit": 2,
-  "lockFileMaintenance": {
-    "enabled": true,
-    "schedule": ["before 6am on monday"]
-  },
   "packageRules": [
     {
       "matchUpdateTypes": ["minor", "patch", "pin", "digest"],
@@ -22,11 +19,6 @@
     {
       "matchUpdateTypes": ["major"],
       "groupName": null
-    },
-    {
-      "matchPackageNames": ["undici"],
-      "allowedVersions": "<8",
-      "description": "undici 8's Agent fails as a dispatcher for Node 24's built-in fetch"
     }
   ]
 }

@@ -1,7 +1,7 @@
 <h1 align="center">FlareWatch Proxy</h1>
 
 <p align="center">
-  A small Node service you run where it can reach what Cloudflare can't.<br />
+  A small Go service you run where it can reach what Cloudflare can't.<br />
   FlareWatch sends it a check, it runs the check and sends back the result.
 </p>
 
@@ -54,14 +54,13 @@ docker run -d -p 127.0.0.1:3000:3000 \
   flarewatch-proxy
 ```
 
-The image runs as a non-root user and holds one bundled JavaScript file. Docker calls `/health` every 30 seconds, so `docker ps` shows the container as `healthy` or `unhealthy`.
+The image runs as a non-root user and holds one static binary with no shell. Docker calls `/health` every 30 seconds, so `docker ps` shows the container as `healthy` or `unhealthy`.
 
-With Node 24 and pnpm:
+With Go 1.27:
 
 ```bash
-pnpm install --frozen-lockfile
-pnpm build
-FLAREWATCH_PROXY_TOKEN='<token>' pnpm start
+go build -trimpath -ldflags='-s -w' -o flarewatch-proxy ./cmd/flarewatch-proxy
+FLAREWATCH_PROXY_TOKEN='<token>' ./flarewatch-proxy
 ```
 
 Run this way, the proxy listens on every network interface, over plain HTTP. Keep the port closed in your firewall to everything but your reverse proxy or tunnel.
@@ -155,7 +154,9 @@ Not every place can run every check. The [settings table](https://flarewatch.app
 
 An HTTP check sends the monitor's method, `headers` and `body`, and follows redirects. It sends the user agent `FlareWatch-Proxy/1.0` unless `headers` sets one. The check fails on a status outside `expectedCodes`, or outside 2xx when that's unset. It also fails when `responseKeyword` is missing from the first 1 MiB of the body, or when `responseForbiddenKeyword` is in it.
 
-A redirecting target's next hop gets the monitor's `headers` too. When a redirect leads to another origin, Node's fetch drops `Authorization`, `Cookie` and `Proxy-Authorization`, but keeps every other header, such as `X-Api-Key`. Don't put a secret in `headers` for a target you don't control.
+A redirecting target's next hop gets the monitor's `headers` too. When a redirect leads to another origin, the proxy drops `Authorization`, `Cookie` and `Proxy-Authorization`, but keeps every other header, such as `X-Api-Key`. Don't put a secret in `headers` for a target you don't control.
+
+A target URL with a username and password in it fails the check, and so does a redirect to one. Put credentials in `headers`.
 
 A `TCP_PING` check opens a connection to `host:port` and closes it.
 
@@ -165,7 +166,7 @@ A check and its SSL step finish within the monitor's `timeout`, 10 seconds by de
 
 `responseHeaderEquals` fails the check when a listed header is missing or has another value. Header names ignore case and values don't. `responseJsonPath` with `responseJsonValue` reads the body as JSON and fails when the value at a path such as `$.checks[0].status` isn't equal to `responseJsonValue`. A JSON body of 1 MiB or more fails, because the proxy can't read all of it. The proxy runs the status first, then the headers, then the body, and reports the first that fails.
 
-FlareWatch runs header and JSON checks through a proxy at 1.1.0 or later. An older proxy would skip them and pass, so FlareWatch fails those checks with an error that asks you to update it. It knows a proxy's version by the `contract` field in each reply.
+FlareWatch runs header and JSON checks through a proxy at 2.0.0 or later. An older proxy would skip them and pass, so FlareWatch fails those checks with an error that asks you to update it. It knows a proxy's version by the `contract` field in each reply.
 
 ## Location
 
@@ -179,7 +180,7 @@ The Worker records its own location as a data centre code too. A proxy near the 
 
 | Route         | Token | Returns                                      |
 | ------------- | ----- | -------------------------------------------- |
-| `GET /`       | no    | The name, version, contract and routes.      |
+| `GET /`       | no    | The name, contract and routes.               |
 | `GET /health` | no    | `{"status": "ok", "timestamp": <ms>}`        |
 | `POST /check` | yes   | The result of the check in the request body. |
 
@@ -209,7 +210,7 @@ curl -s https://proxy.example.com/check \
 }
 ```
 
-`contract` is 2 from proxy 1.1.0 on, and tells FlareWatch the proxy runs header and JSON checks. A failed check has `"ok": false` and an `error`, and usually a `latency`. `ssl` comes back only when `sslCheckEnabled` is set and the check passes. `expiryDate` is in Unix seconds.
+`contract` is 2 from proxy 2.0.0 on, and tells FlareWatch the proxy runs header and JSON checks. A failed check has `"ok": false` and an `error`, and usually a `latency`. `ssl` comes back only when `sslCheckEnabled` is set and the check passes. `expiryDate` is in Unix seconds.
 
 | Status | Means                                                          |
 | ------ | -------------------------------------------------------------- |
@@ -217,20 +218,20 @@ curl -s https://proxy.example.com/check \
 | 400    | The body isn't JSON, or a field is invalid. `{"error": "..."}` |
 | 401    | The token is missing or wrong. `{"error": "Unauthorized"}`     |
 | 413    | The body is over 64 KiB. `{"error": "..."}`                    |
-| 500    | The proxy itself failed. `{"error": "..."}`                    |
 
 ## Development
 
-You need Node 24. The `packageManager` field in `package.json` pins pnpm, and the scripts run Vite+ (`vp`).
+You need Go 1.27. The proxy uses the standard library only.
+
+The Go code is in `cmd/flarewatch-proxy`. The tests read the contract with FlareWatch from `testdata` in that folder. FlareWatch holds a copy of all three files and runs them against its own checks. `http-assertions.json` says which error an HTTP reply gives. `requests.json` says which requests the proxy accepts, and `verdicts.json` says how a check ends against a given target. The TypeScript proxy 1.1.0 wrote most of the expected results in the last two, and a run on workerd wrote the rest. A case with a `deviation` is one where this proxy differs from the TypeScript proxy on purpose, and the field says how.
 
 ```bash
-pnpm install
-FLAREWATCH_PROXY_TOKEN=local-dev-token-0001 pnpm dev   # restarts on change
-pnpm check                                             # format, lint and types
-pnpm test
-pnpm build                                             # dist/index.mjs
+FLAREWATCH_PROXY_TOKEN=local-dev-token-0001 go run ./cmd/flarewatch-proxy   # run from source
+test -z "$(gofmt -l .)"                                                     # formatting
+go vet ./...
+go tool staticcheck ./...
+go test -race ./...
+go build -trimpath -ldflags='-s -w' -o flarewatch-proxy ./cmd/flarewatch-proxy
 ```
-
-The lint rules in `tools/oxlint/anti-slop/` are a copy from FlareWatch. Don't edit them here.
 
 MIT licensed. See [LICENSE](LICENSE).

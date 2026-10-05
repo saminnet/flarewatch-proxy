@@ -1,9 +1,10 @@
 .git
 .github
-node_modules
-dist
-tests
 docs
+**/testdata
+**/*_test.go
+docker
 *.md
 .env*
 **/.env*
+flarewatch-proxy

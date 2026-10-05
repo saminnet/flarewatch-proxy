@@ -10,6 +10,10 @@ on:
 permissions:
   contents: read
 
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   quality:
     runs-on: ubuntu-26.04
@@ -17,18 +21,47 @@ jobs:
     steps:
       - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 #v7.0.0
 
-      - name: Setup Vite+
-        uses: voidzero-dev/setup-vp@250f29ce396baf5e8f24498e17c0dfdebabc26eb #v1.15.0
+      - name: Setup Go
+        uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e #v7.0.0
         with:
-          node-version: '24'
-          cache: true
-          run-install: true
+          go-version-file: go.mod
 
-      - name: Check formatting, types, and lint
-        run: vp check
+      - name: Check formatting
+        run: test -z "$(gofmt -l .)"
 
-      - name: Run tests
-        run: vp run test
+      - name: Vet
+        run: go vet ./...
+
+      - name: Staticcheck
+        run: go tool staticcheck ./...
+
+      - name: Test
+        run: go test -race ./...
+
+      - name: Compare the fixtures with FlareWatch main
+        run: |
+          for f in http-assertions.json:packages/shared/tests/fixtures requests.json:packages/shared/tests/fixtures verdicts.json:services/worker/tests/fixtures; do
+            name=${f%%:*}; dir=${f#*:}
+            status=$(curl -sS -o "/tmp/$name" -w '%{http_code}' "https://raw.githubusercontent.com/saminnet/flarewatch/main/$dir/$name")
+            if [ "$status" = 404 ]; then echo "::notice::FlareWatch main has no $dir/$name yet"; continue; fi
+            [ "$status" = 200 ] || exit 1
+            cmp "/tmp/$name" "cmd/flarewatch-proxy/testdata/$name"
+          done
 
       - name: Build
-        run: vp run build
+        run: go build -trimpath -ldflags="-s -w" -o /dev/null ./cmd/flarewatch-proxy
+
+  image:
+    runs-on: ubuntu-26.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 #v7.0.0
+
+      - name: Build the image
+        run: docker build -f docker/Dockerfile -t flarewatch-proxy:ci .
+
+      - name: Run the health check
+        run: |
+          docker run -d --name proxy -e FLAREWATCH_PROXY_TOKEN=ci-token-0123456789 -p 127.0.0.1:3000:3000 flarewatch-proxy:ci
+          sleep 2
+          docker exec proxy /flarewatch-proxy -healthcheck

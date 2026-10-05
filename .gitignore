@@ -1,7 +1,5 @@
-node_modules/
-dist/
+/flarewatch-proxy
 .DS_Store
+*.log
 .env*
 !**/.env.example
-.pnpm-debug.log*
-*.log
