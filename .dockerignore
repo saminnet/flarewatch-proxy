@@ -1,0 +1,10 @@
+.git
+.github
+docs
+**/testdata
+**/*_test.go
+docker
+*.md
+.env*
+**/.env*
+flarewatch-proxy

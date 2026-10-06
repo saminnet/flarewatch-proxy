@@ -1,54 +1,29 @@
-# FlareWatch Proxy - Docker Image
-# Multi-stage build: Chainguard builder + Node 24 Alpine runtime (non-root)
+FROM --platform=$BUILDPLATFORM golang:1.27-alpine@sha256:8a5910f31396cd4d89662f56c68b3ae31d374308270a1c3bd96672ee5ed43414 AS builder
 
-# =============================================================================
-# Stage 1: Build and compile TypeScript
-# =============================================================================
-FROM cgr.dev/chainguard/node:latest-dev@sha256:5e1ebdfc0c312d785515f403e309a8f6edf735eee96dd0d156328f5867c48742 AS builder
+ARG TARGETOS
+ARG TARGETARCH
 
 WORKDIR /app
 
-# Copy package files for dependency caching
-COPY --chown=65532:65532 package.json pnpm-lock.yaml ./
+COPY go.mod go.sum ./
 
-# Install all dependencies (including devDeps for build)
-RUN pnpm install --frozen-lockfile
+COPY cmd ./cmd
 
-# Copy source files
-COPY --chown=65532:65532 . .
+RUN CGO_ENABLED=0 GOOS=$TARGETOS GOARCH=$TARGETARCH go build -trimpath -ldflags="-s -w" -o /flarewatch-proxy ./cmd/flarewatch-proxy
 
-# Type check
-RUN pnpm compile
+FROM scratch
 
-# Build to JavaScript
-RUN pnpm build
+COPY --from=builder /etc/ssl/certs/ca-certificates.crt /etc/ssl/certs/ca-certificates.crt
+COPY --from=builder /flarewatch-proxy /flarewatch-proxy
 
-# =============================================================================
-# Stage 2: Runtime (Node 24 LTS)
-# =============================================================================
-FROM node:24-alpine@sha256:c921b97d4b74f51744057454b306b418cf693865e73b8100559189605f6955b8 AS runner
-
-WORKDIR /app
-
-ENV NODE_ENV=production
 ENV PORT=3000
-
-# Remove npm/yarn/corepack (proxy doesn't need them).
-RUN rm -rf \
-    /usr/local/lib/node_modules/npm \
-    /usr/local/bin/npm \
-    /usr/local/bin/npx \
-    /usr/local/lib/node_modules/corepack \
-    /usr/local/bin/corepack \
-    /opt/yarn* \
-    /usr/local/bin/yarn \
-    /usr/local/bin/yarnpkg
-
-# Copy compiled JavaScript (single bundled file)
-COPY --chown=node:node --from=builder /app/dist/index.mjs ./dist/index.mjs
+ENV FLAREWATCH_PROXY_LOG=json
 
 EXPOSE 3000
 
-USER node
+HEALTHCHECK --interval=30s --timeout=5s --start-period=5s \
+    CMD ["/flarewatch-proxy", "-healthcheck"]
 
-CMD ["node", "dist/index.mjs"]
+USER 65532:65532
+
+ENTRYPOINT ["/flarewatch-proxy"]

@@ -1,21 +1,32 @@
-# FlareWatch Proxy - Docker Compose
-# Runs as a non-root user and ships only the bundled runtime
-
 services:
   flarewatch-proxy:
     build:
       context: ..
       dockerfile: docker/Dockerfile
     ports:
-      - '${PORT:-3000}:${PORT:-3000}'
+      - '${BIND_ADDRESS:-127.0.0.1}:${PORT:-3000}:${PORT:-3000}'
     environment:
       - PORT=${PORT:-3000}
       - FLAREWATCH_PROXY_LOCATION=${FLAREWATCH_PROXY_LOCATION:-}
       - FLAREWATCH_PROXY_TOKEN=${FLAREWATCH_PROXY_TOKEN:-}
+      - FLAREWATCH_PROXY_TOKEN_PREVIOUS=${FLAREWATCH_PROXY_TOKEN_PREVIOUS:-}
     restart: unless-stopped
-    # Container runs as non-root by default
     security_opt:
       - no-new-privileges:true
     read_only: true
     tmpfs:
       - /tmp:noexec,nosuid,nodev
+
+  cloudflared:
+    profiles: ['tunnel']
+    image: cloudflare/cloudflared:2026.9.3@sha256:072c067d25ccbe61d46e18f0d0723255f2bb5304f7317caa95b27031520ff92c
+    command: tunnel --no-autoupdate run
+    environment:
+      - TUNNEL_TOKEN=${TUNNEL_TOKEN:-}
+    depends_on:
+      flarewatch-proxy:
+        condition: service_healthy
+    restart: unless-stopped
+    security_opt:
+      - no-new-privileges:true
+    read_only: true
