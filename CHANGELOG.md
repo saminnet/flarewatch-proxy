@@ -6,7 +6,7 @@ All notable changes to FlareWatch Proxy will be documented in this file.
 
 ### Fixed
 
-- The proxy is built with Go 1.27.2, which fixes security issues in `crypto/tls`, `net/http` and `net/textproto`. Pull the new image, or rebuild the binary with Go 1.27.2 or later.
+- The proxy is built with Go 1.27.2, which fixes security issues in `crypto/tls`, `net/http` and `net/textproto`. To get the fixes, pull this version into your clone and rebuild: run `docker compose -f docker/docker-compose.yml up -d --build`, or build the binary with Go 1.27.2 or later.
 
 ## 2.0.0 - 2026-10-06
 
