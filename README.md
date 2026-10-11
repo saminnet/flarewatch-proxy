@@ -56,7 +56,7 @@ docker run -d -p 127.0.0.1:3000:3000 \
 
 The image runs as a non-root user and holds one static binary with no shell. Docker calls `/health` every 30 seconds, so `docker ps` shows the container as `healthy` or `unhealthy`.
 
-With Go 1.27:
+With Go 1.27.2 or later:
 
 ```bash
 go build -trimpath -ldflags='-s -w' -o flarewatch-proxy ./cmd/flarewatch-proxy
@@ -221,7 +221,7 @@ curl -s https://proxy.example.com/check \
 
 ## Development
 
-You need Go 1.27. The proxy uses the standard library only.
+You need Go 1.27.2 or later. The proxy uses the standard library only.
 
 The Go code is in `cmd/flarewatch-proxy`. The tests read the contract with FlareWatch from `testdata` in that folder. FlareWatch holds a copy of all three files and runs them against its own checks. `http-assertions.json` says which error an HTTP reply gives. `requests.json` says which requests the proxy accepts, and `verdicts.json` says how a check ends against a given target. The TypeScript proxy 1.1.0 wrote most of the expected results in the last two, and a run on workerd wrote the rest. A case with a `deviation` is one where this proxy differs from the TypeScript proxy on purpose, and the field says how.
 
