@@ -2,6 +2,12 @@
 
 All notable changes to FlareWatch Proxy will be documented in this file.
 
+## Unreleased
+
+### Fixed
+
+- The proxy is built with Go 1.27.2, which fixes security issues in `crypto/tls`, `net/http` and `net/textproto`. Pull the new image, or rebuild the binary with Go 1.27.2 or later.
+
 ## 2.0.0 - 2026-10-06
 
 FlareWatch needs this release to run `responseHeaderEquals` and `responseJsonPath` checks through a proxy.
