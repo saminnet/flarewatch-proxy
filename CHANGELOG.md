@@ -2,6 +2,12 @@
 
 All notable changes to FlareWatch Proxy will be documented in this file.
 
+## 2.1.0 - unreleased
+
+### Added
+
+- Each release now publishes an image for amd64 and arm64 to `ghcr.io/saminnet/flarewatch-proxy`. Docker Compose pulls the `2` tag by default, so `up -d` no longer needs `--build`. Building from a clone still works with `--build`.
+
 ## 2.0.1 - 2026-10-11
 
 ### Fixed
