@@ -146,7 +146,9 @@ For certificate expiry, add `sslCheckEnabled: true` and `sslCheckDaysBeforeExpir
 }
 ```
 
-When a check fails, FlareWatch runs it once more through the proxy, straight away, and records that result and its location. The monitor goes down only when the proxy sees it down too. `confirmVia` must name a different place than `checkProxy`.
+When a check fails, FlareWatch runs it again through the proxy, in the same run. If the proxy sees the target up, FlareWatch records that result and its location, and the monitor stays up. If the proxy sees it down, the monitor goes down with the note `(confirmed elsewhere)`. If the proxy can't answer, the monitor still goes down, with the note `(no confirmation available)`. `confirmVia` must name a different place than `checkProxy`.
+
+FlareWatch 3.6.0 and later also take a list of up to five places, and `confirmQuorum` sets how many must answer. See [Confirm from a second place](https://flarewatch.app/docs/monitors#confirm-from-a-second-place).
 
 Not every place can run every check. The [settings table](https://flarewatch.app/docs/monitors#other-regions-and-private-networks) lists what a proxy can run, and FlareWatch refuses a monitor that asks it for more.
 

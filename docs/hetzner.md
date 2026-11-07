@@ -29,6 +29,8 @@ Name each server in a monitor's `checkProxy` or `confirmVia`:
 confirmVia: ['https://proxy-hel1.example.com/check', 'https://proxy-ash.example.com/check'],
 ```
 
+A list in `confirmVia` needs FlareWatch 3.6.0 or later. Older releases take one URL.
+
 To update, pull the image and recreate the container:
 
 ```sh

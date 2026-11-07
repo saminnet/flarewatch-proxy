@@ -31,10 +31,16 @@ jobs:
         run: |
           set -euo pipefail
           version="${TAG#v}"
+          image=ghcr.io/saminnet/flarewatch-proxy
           {
-            echo "version=${version}"
-            echo "major=${version%%.*}"
-            echo "minor=${version%.*}"
+            echo 'tags<<EOF'
+            echo "${image}:${version}"
+            if [[ "$version" != *-* ]]; then
+              echo "${image}:${version%%.*}"
+              echo "${image}:${version%.*}"
+              echo "${image}:latest"
+            fi
+            echo EOF
           } >> "$GITHUB_OUTPUT"
       - uses: docker/build-push-action@c3c9e263c25d99ce0380d002d59b67737d91b0dc # v7.4.0
         with:
@@ -42,11 +48,7 @@ jobs:
           file: docker/Dockerfile
           platforms: linux/amd64,linux/arm64
           push: true
-          tags: |
-            ghcr.io/saminnet/flarewatch-proxy:${{ steps.meta.outputs.version }}
-            ghcr.io/saminnet/flarewatch-proxy:${{ steps.meta.outputs.major }}
-            ghcr.io/saminnet/flarewatch-proxy:${{ steps.meta.outputs.minor }}
-            ghcr.io/saminnet/flarewatch-proxy:latest
+          tags: ${{ steps.meta.outputs.tags }}
           labels: org.opencontainers.image.source=https://github.com/saminnet/flarewatch-proxy
   release:
     # Forks keep their own tags; only the upstream repo publishes releases.
@@ -80,5 +82,7 @@ jobs:
             exit 1
           fi
 
-          gh release create "$TAG" --title "$TAG" --notes-file "$NOTES"
+          prerelease=false
+          if [[ "$TAG" == *-* ]]; then prerelease=true; fi
+          gh release create "$TAG" --title "$TAG" --notes-file "$NOTES" --prerelease="$prerelease"
 
