@@ -32,19 +32,19 @@ The proxy won't start without a token of at least 16 characters. Make one:
 openssl rand -base64 32
 ```
 
-No image is published, so build it from a clone. With Docker Compose, put the token in `docker/.env`:
+The published image is `ghcr.io/saminnet/flarewatch-proxy`. With Docker Compose, put the token in `docker/.env` and pull the image:
 
 ```bash
 git clone https://github.com/saminnet/flarewatch-proxy.git
 cd flarewatch-proxy
 cp docker/.env.example docker/.env
-docker compose -f docker/docker-compose.yml up -d --build
+docker compose -f docker/docker-compose.yml up -d
 curl http://localhost:3000/health
 ```
 
 Compose publishes the port on `127.0.0.1`, so only this machine can reach the proxy. To open it to your network, set `BIND_ADDRESS=0.0.0.0` in `docker/.env`.
 
-With plain Docker:
+To build the image from a clone, add `--build` to the Compose command. With plain Docker:
 
 ```bash
 docker build -t flarewatch-proxy -f docker/Dockerfile .
@@ -146,9 +146,13 @@ For certificate expiry, add `sslCheckEnabled: true` and `sslCheckDaysBeforeExpir
 }
 ```
 
-When a check fails, FlareWatch runs it once more through the proxy, straight away, and records that result and its location. The monitor goes down only when the proxy sees it down too. `confirmVia` must name a different place than `checkProxy`.
+When a check fails, FlareWatch runs it again through the proxy, in the same run. If the proxy sees the target up, FlareWatch records that result and its location, and the monitor stays up. If the proxy sees it down, the monitor goes down with the note `(confirmed elsewhere)`. If the proxy can't answer, the monitor still goes down, with the note `(no confirmation available)`. `confirmVia` must name a different place than `checkProxy`.
+
+FlareWatch 3.6.0 and later also take a list of up to five places, and `confirmQuorum` sets how many must answer. See [Confirm from a second place](https://flarewatch.app/docs/monitors#confirm-from-a-second-place).
 
 Not every place can run every check. The [settings table](https://flarewatch.app/docs/monitors#other-regions-and-private-networks) lists what a proxy can run, and FlareWatch refuses a monitor that asks it for more.
+
+For one proxy per region, see [the Fly recipe](docs/fly.md) or [the Hetzner recipe](docs/hetzner.md).
 
 ## What it checks
 
@@ -230,6 +234,7 @@ FLAREWATCH_PROXY_TOKEN=local-dev-token-0001 go run ./cmd/flarewatch-proxy   # ru
 test -z "$(gofmt -l .)"                                                     # formatting
 go vet ./...
 go tool staticcheck ./...
+go fix -diff ./...                                                          # prints nothing when clean
 go test -race ./...
 go build -trimpath -ldflags='-s -w' -o flarewatch-proxy ./cmd/flarewatch-proxy
 ```

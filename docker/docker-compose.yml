@@ -1,5 +1,6 @@
 services:
   flarewatch-proxy:
+    image: ghcr.io/saminnet/flarewatch-proxy:${IMAGE_TAG:-2}
     build:
       context: ..
       dockerfile: docker/Dockerfile

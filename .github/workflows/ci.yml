@@ -35,6 +35,18 @@ jobs:
       - name: Staticcheck
         run: go tool staticcheck ./...
 
+      - name: Check for code that go fix rewrites
+        run: go fix -diff ./...
+
+      # Installed first: go run would print its download lines into the captured output.
+      - name: Install gopls
+        run: GOBIN="$RUNNER_TEMP/bin" go install golang.org/x/tools/gopls@v0.24.0
+
+      - name: Check gopls hints
+        run: |
+          diagnostics=$(find . -name '*.go' -exec "$RUNNER_TEMP/bin/gopls" check -severity=hint {} + 2>&1)
+          if [ -n "$diagnostics" ]; then echo "$diagnostics"; exit 1; fi
+
       - name: Test
         run: go test -race ./...
 
