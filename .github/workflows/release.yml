@@ -1,30 +1,74 @@
 name: Release
 
 on:
-  push:
-    tags: ['v*']
+  workflow_run:
+    workflows: ['Proxy CI']
+    types: [completed]
+    branches: [main]
 
 permissions:
   contents: read
 
+concurrency:
+  group: release
+  cancel-in-progress: false
+
 jobs:
+  version:
+    # Forks keep their own releases. Only a passing Proxy CI run for a push to main releases.
+    if: >-
+      github.repository == 'saminnet/flarewatch-proxy' &&
+      github.event.workflow_run.event == 'push' &&
+      github.event.workflow_run.conclusion == 'success'
+    runs-on: ubuntu-26.04
+    timeout-minutes: 5
+    outputs:
+      tag: ${{ steps.version.outputs.tag }}
+    steps:
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+        with:
+          ref: ${{ github.event.workflow_run.head_sha }}
+          persist-credentials: false
+
+      - name: Find the newest dated version in CHANGELOG.md and check it has no tag
+        id: version
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          # The newest dated section, so an unreleased section merged above it does not hide it.
+          HEADING=$(grep -m1 -E '^## [0-9]+\.[0-9]+\.[0-9]+(-[0-9A-Za-z.]+)? - [0-9]{4}-[0-9]{2}-[0-9]{2}$' CHANGELOG.md || true)
+          if [[ -z "$HEADING" ]]; then
+            echo "CHANGELOG.md has no '## X.Y.Z - YYYY-MM-DD' section. Nothing to release."
+            exit 0
+          fi
+
+          VERSION=${HEADING#'## '}
+          VERSION=${VERSION%% *}
+          TAG="v${VERSION}"
+          if [[ -n "$(git ls-remote --tags origin "refs/tags/${TAG}")" ]]; then
+            echo "${TAG} is already released."
+            exit 0
+          fi
+
+          if ! grep -qx "const version = \"${VERSION}\"" cmd/flarewatch-proxy/main.go; then
+            echo "::error::CHANGELOG.md is at ${VERSION}, but cmd/flarewatch-proxy/main.go has: $(grep 'const version' cmd/flarewatch-proxy/main.go)"
+            exit 1
+          fi
+          echo "tag=${TAG}" >> "$GITHUB_OUTPUT"
+
   image:
-    if: ${{ github.repository == 'saminnet/flarewatch-proxy' }}
+    needs: version
+    if: needs.version.outputs.tag
     runs-on: ubuntu-26.04
     timeout-minutes: 15
     permissions:
       packages: write
     steps:
       - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
-      - name: Check that the tag matches the version in the code
-        env:
-          TAG: ${{ github.ref_name }}
-        shell: bash
-        run: |
-          if ! grep -qx "const version = \"${TAG#v}\"" cmd/flarewatch-proxy/main.go; then
-            echo "::error::The tag is ${TAG}, but cmd/flarewatch-proxy/main.go has: $(grep 'const version' cmd/flarewatch-proxy/main.go)"
-            exit 1
-          fi
+        with:
+          ref: ${{ github.event.workflow_run.head_sha }}
+          persist-credentials: false
       # The Dockerfile cross-compiles on $BUILDPLATFORM, so arm64 needs no QEMU.
       - uses: docker/setup-buildx-action@f87e5991a6d7451dcb8d9637bfbc97413f497069 # v4.4.1
       - uses: docker/login-action@dbcb813823bdd20940b903addbd779551569679f # v4.6.0
@@ -35,7 +79,7 @@ jobs:
       - id: meta
         name: Derive image version tags
         env:
-          TAG: ${{ github.ref_name }}
+          TAG: ${{ needs.version.outputs.tag }}
         shell: bash
         run: |
           set -euo pipefail
@@ -59,21 +103,24 @@ jobs:
           push: true
           tags: ${{ steps.meta.outputs.tags }}
           labels: org.opencontainers.image.source=https://github.com/saminnet/flarewatch-proxy
+
   release:
-    # Forks keep their own tags; only the upstream repo publishes releases.
-    if: ${{ github.repository == 'saminnet/flarewatch-proxy' }}
-    needs: image
+    needs: [version, image]
     runs-on: ubuntu-26.04
     timeout-minutes: 5
     permissions:
       contents: write
     steps:
       - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+        with:
+          ref: ${{ github.event.workflow_run.head_sha }}
+          persist-credentials: false
 
-      - name: Publish the CHANGELOG.md section as the release notes
+      - name: Tag the commit and publish the CHANGELOG.md section as the release notes
         env:
           GH_TOKEN: ${{ github.token }}
-          TAG: ${{ github.ref_name }}
+          TAG: ${{ needs.version.outputs.tag }}
+          SHA: ${{ github.event.workflow_run.head_sha }}
         shell: bash
         run: |
           set -euo pipefail
@@ -87,11 +134,10 @@ jobs:
             | sed -E "s#\]\(([^):\#][^):]*)\)#](https://github.com/${GITHUB_REPOSITORY}/blob/${TAG}/\1)#g" > "$NOTES"
 
           if ! grep -q '[^[:space:]]' "$NOTES"; then
-            echo "CHANGELOG.md has no '## ${TAG#v} - <date>' section with content"
+            echo "The CHANGELOG.md section for ${TAG#v} is empty."
             exit 1
           fi
 
           prerelease=false
           if [[ "$TAG" == *-* ]]; then prerelease=true; fi
-          gh release create "$TAG" --title "$TAG" --notes-file "$NOTES" --prerelease="$prerelease"
-
+          gh release create "$TAG" --target "$SHA" --title "$TAG" --notes-file "$NOTES" --prerelease="$prerelease"

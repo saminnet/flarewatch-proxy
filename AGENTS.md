@@ -5,7 +5,7 @@ See [README.md](README.md) for what the proxy is and how FlareWatch uses it.
 - Build, vet and test with the Go toolchain: `go build ./cmd/flarewatch-proxy`, `go vet ./...`, `go test -race ./...`. Keep the code `gofmt` clean.
 - Run `go tool staticcheck ./...` before you present a change. `staticcheck.conf` holds the check list.
 - Run `go fix -diff ./...` and `go run golang.org/x/tools/gopls@v0.24.0 check -severity=hint` on each `.go` file. CI fails on any output.
-- Change `const version` in `cmd/flarewatch-proxy/main.go` before you push a release tag. The release fails when the tag and the version differ.
+- A merge to main releases when the newest dated `## X.Y.Z - YYYY-MM-DD` section of `CHANGELOG.md` has no tag. After Proxy CI passes, the Release workflow publishes the images, tags the commit and publishes the section. Set `const version` in `cmd/flarewatch-proxy/main.go` to the same version: the release fails when they differ. Do not push a release tag by hand: the workflow skips a version that already has a tag.
 - Build the binary from the Go standard library only. You can add a tool dependency to `go.mod` with `go get -tool`.
 - The Go code is one `main` package in `cmd/flarewatch-proxy`. The paths below are relative to that folder.
 - The wire contract with FlareWatch lives in `server.go`, `monitor.go`, `check.go` and `assert.go`. It mirrors `services/worker/src/checkers/proxy.ts` in [saminnet/flarewatch](https://github.com/saminnet/flarewatch). Change both repos together.

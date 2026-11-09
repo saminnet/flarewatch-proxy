@@ -2,7 +2,7 @@
 
 All notable changes to FlareWatch Proxy will be documented in this file.
 
-## 2.1.0 - unreleased
+## 2.1.0 - 2026-11-09
 
 ### Added
 
