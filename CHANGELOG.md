@@ -2,6 +2,13 @@
 
 All notable changes to FlareWatch Proxy will be documented in this file.
 
+## 2.2.0 - 2026-11-26
+
+### Added
+
+- Fall back to uppercase `FLY_REGION` when `FLAREWATCH_PROXY_LOCATION` is unset or blank, so Fly.io deployments label their region automatically.
+- Pass `FLAREWATCH_PROXY_LOG` (defaulting to `json`) through `docker/docker-compose.yml` and document it in `README.md`.
+
 ## 2.1.0 - 2026-11-09
 
 ### Added
