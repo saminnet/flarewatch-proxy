@@ -74,17 +74,18 @@ A reverse proxy or `cloudflared` on the same machine reaches the proxy at `http:
 The Compose file can run the tunnel for you, so you open no port and need no reverse proxy. In the Cloudflare dashboard, create a tunnel and give it a public hostname that points to `http://flarewatch-proxy:3000`. Put the tunnel's token in `docker/.env` as `TUNNEL_TOKEN`, then start both containers:
 
 ```bash
-docker compose -f docker/docker-compose.yml --profile tunnel up -d --build
+docker compose -f docker/docker-compose.yml --profile tunnel up -d
 ```
 
 ## Configure
 
-| Variable                          | What it's for                                                                     |
-| --------------------------------- | --------------------------------------------------------------------------------- |
-| `FLAREWATCH_PROXY_TOKEN`          | Required. FlareWatch sends it as `Authorization: Bearer <token>`.                 |
-| `FLAREWATCH_PROXY_TOKEN_PREVIOUS` | A second token the proxy also accepts. See [Change the token](#change-the-token). |
-| `FLAREWATCH_PROXY_LOCATION`       | The name FlareWatch records for checks run here. See [Location](#location).       |
-| `PORT`                            | The port to listen on. The default is `3000`.                                     |
+| Variable                          | What it's for                                                                                                     |
+| --------------------------------- | ----------------------------------------------------------------------------------------------------------------- |
+| `FLAREWATCH_PROXY_TOKEN`          | Required. FlareWatch sends it as `Authorization: Bearer <token>`.                                                 |
+| `FLAREWATCH_PROXY_TOKEN_PREVIOUS` | A second token the proxy also accepts. See [Change the token](#change-the-token).                                 |
+| `FLAREWATCH_PROXY_LOCATION`       | The name FlareWatch records for checks run here. Defaults to `FLY_REGION` on Fly.io. See [Location](#location).   |
+| `FLAREWATCH_PROXY_LOG`            | Set to `json` for JSON log lines on stderr, or `text` for plain text in Docker Compose. Defaults to plain text for the binary and `json` in the Docker image. |
+| `PORT`                            | The port to listen on. The default is `3000`.                                                                     |
 
 The proxy drops spaces and line breaks around the token. A token shorter than 16 characters stops the proxy at startup, and so does a `PORT` that isn't a whole number from 1 to 65535.
 
@@ -174,9 +175,9 @@ FlareWatch runs header and JSON checks through a proxy at 2.0.0 or later. An old
 
 ## Location
 
-Each result carries a location, and FlareWatch records it with the result. Set `FLAREWATCH_PROXY_LOCATION` to a name you'll recognise, such as `Berlin office`.
+Each result carries a location, and FlareWatch records it with the result. Set `FLAREWATCH_PROXY_LOCATION` to a name you'll recognise, such as `Berlin office`. When it is unset or blank, the proxy falls back to `FLY_REGION` (uppercased) if set.
 
-Without it, the proxy asks Cloudflare's trace endpoint, `https://cloudflare.com/cdn-cgi/trace`, at startup. It uses the Cloudflare data centre code that comes back, such as `FRA`. This is the one outbound call the proxy makes on its own. A check never waits for it. Until an answer comes back the location is `UNKNOWN`, and after a failed lookup the proxy tries again no sooner than a minute later.
+When neither variable supplies a location, the proxy asks Cloudflare's trace endpoint, `https://cloudflare.com/cdn-cgi/trace`, at startup. It uses the Cloudflare data centre code that comes back, such as `FRA`. This is the one outbound call the proxy makes on its own. A check never waits for it. Until an answer comes back the location is `UNKNOWN`, and after a failed lookup the proxy tries again no sooner than a minute later.
 
 The Worker records its own location as a data centre code too. A proxy near the Worker's data centre gets the same code, so a confirmation looks like the Worker's own check. Set `FLAREWATCH_PROXY_LOCATION` to tell them apart.
 

@@ -1,6 +1,7 @@
 package main
 
 import (
+	"cmp"
 	"errors"
 	"fmt"
 	"strconv"
@@ -24,7 +25,10 @@ func readSettings(getenv func(string) string) (settings, error) {
 	s := settings{
 		Token:         strings.TrimSpace(getenv("FLAREWATCH_PROXY_TOKEN")),
 		PreviousToken: strings.TrimSpace(getenv("FLAREWATCH_PROXY_TOKEN_PREVIOUS")),
-		Location:      strings.TrimSpace(getenv("FLAREWATCH_PROXY_LOCATION")),
+		Location: cmp.Or(
+			strings.TrimSpace(getenv("FLAREWATCH_PROXY_LOCATION")),
+			strings.ToUpper(strings.TrimSpace(getenv("FLY_REGION"))),
+		),
 	}
 	if s.Token == "" {
 		return settings{}, errors.New("FLAREWATCH_PROXY_TOKEN is required")

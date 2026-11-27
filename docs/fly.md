@@ -11,9 +11,6 @@ primary_region = "fra"
 [build]
   image = "ghcr.io/saminnet/flarewatch-proxy:2"
 
-[env]
-  FLAREWATCH_PROXY_LOCATION = "FRA"
-
 [http_service]
   internal_port = 3000
   force_https = true
@@ -29,7 +26,7 @@ primary_region = "fra"
     grace_period = "10s"
 ```
 
-Use a separate app name in each region, and set `FLAREWATCH_PROXY_LOCATION` to the region so the status page names it. Without it, the proxy reports the Cloudflare location of its outbound connection, which is usually close but not the same.
+Use a separate app name in each region. On Fly.io the proxy falls back to uppercase `FLY_REGION` (such as `FRA`) when `FLAREWATCH_PROXY_LOCATION` is unset, or set `FLAREWATCH_PROXY_LOCATION` yourself to control the exact label shown on the status page.
 
 Create the app, set its token and deploy from that directory:
 
